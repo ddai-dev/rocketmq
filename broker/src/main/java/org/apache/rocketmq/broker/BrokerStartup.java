@@ -107,12 +107,15 @@ public class BrokerStartup {
                 System.exit(-1);
             }
 
+
             final BrokerConfig brokerConfig = new BrokerConfig();
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
+            // 作为客户端像 nameserver 注册路由信息
             final NettyClientConfig nettyClientConfig = new NettyClientConfig();
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+            // 监控producer 和 consumer
             nettyServerConfig.setListenPort(10911);
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
@@ -147,6 +150,7 @@ public class BrokerStartup {
                 System.exit(-2);
             }
 
+            // 获取 namesrv 地址
             String namesrvAddr = brokerConfig.getNamesrvAddr();
             if (null != namesrvAddr) {
                 try {
@@ -207,6 +211,7 @@ public class BrokerStartup {
             MixAll.printObjectProperties(log, nettyClientConfig);
             MixAll.printObjectProperties(log, messageStoreConfig);
 
+            // 创建 contrller
             final BrokerController controller = new BrokerController(
                 brokerConfig,
                 nettyServerConfig,

@@ -857,10 +857,16 @@ public class BrokerController {
             handleSlaveSynchronize(messageStoreConfig.getBrokerRole());
         }
 
+        /**
+         * Broker启动时向集群中所有的NameServer发送心跳信息，每隔30s向集群中所有NameServer发送心跳包
+         * NameServer收到心跳包时会更新brokerLiveTable缓存中BrokerLiveInfo的lastUpdataTimeStamp信息
+         * 后NameServer每隔10s扫描brokerLiveTable，如果连续120S没有收到心跳包，NameServer将移除Broker的路由信息同时关闭Socket连接
+         */
 
-
+        // 注册 Broker 信息
         this.registerBrokerAll(true, false, true);
 
+        // 每隔30s上报Broker信息到NameServer
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -871,6 +877,7 @@ public class BrokerController {
                     log.error("registerBrokerAll Exception", e);
                 }
             }
+            // brokerConfig.getRegisterNameServerPeriod()
         }, 1000 * 10, Math.max(10000, Math.min(brokerConfig.getRegisterNameServerPeriod(), 60000)), TimeUnit.MILLISECONDS);
 
         if (this.brokerStatsManager != null) {

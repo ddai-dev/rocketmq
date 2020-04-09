@@ -71,6 +71,7 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
             tmpList.add(faultItem);
         }
 
+        // 如果有 FaultItem， 则随机选择一个
         if (!tmpList.isEmpty()) {
             Collections.shuffle(tmpList);
 
@@ -97,8 +98,11 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
     }
 
     class FaultItem implements Comparable<FaultItem> {
+        // final String name 条目唯一键，这里为 brokerName
         private final String name;
+        // 本次消息发送延迟
         private volatile long currentLatency;
+        // 故障规避开始时间
         private volatile long startTimestamp;
 
         public FaultItem(final String name) {
@@ -130,6 +134,8 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
             return 0;
         }
 
+        // startTimestamp 的计算
+        // 计算出来的延迟值+加上本次消息的延迟值，设置 为FaultItem 的 startTimestamp,表示当前时间必须大于该 startTimestamp 时，该 broker 才重新参与 MessageQueue 的负载
         public boolean isAvailable() {
             return (System.currentTimeMillis() - startTimestamp) >= 0;
         }

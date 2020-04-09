@@ -175,6 +175,7 @@ public class MQClientInstance {
             List<QueueData> qds = route.getQueueDatas();
             Collections.sort(qds);
             for (QueueData qd : qds) {
+                // 判断权限, 没有权限则跳过
                 if (PermName.isWriteable(qd.getPerm())) {
                     BrokerData brokerData = null;
                     for (BrokerData bd : route.getBrokerDatas()) {
@@ -188,6 +189,7 @@ public class MQClientInstance {
                         continue;
                     }
 
+                    // (根据 brokerName 找到 brokerData 信息 ，找不到或没有找到 Master 节点，则 遍历下一个 QueueData(消息只能发布到 master 节点)
                     if (!brokerData.getBrokerAddrs().containsKey(MixAll.MASTER_ID)) {
                         continue;
                     }
@@ -585,13 +587,25 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * #1 为了避免重复从 NameServer 获取配置信息，在这里使用了ReentrantLock,并且设有超时时间。固定为3000s
+     * #2 默认 topic
+     * #3 指定 topic
+     * #4 #5 #6 拿到 topic数据, 与本地缓存中的 topic 比较, 如果有变化，则需要同步更新发送者、消费者关于该 topic 的缓存
+     * #7 更新发送者缓存
+     * #8 更新订阅者的缓存（消费队列信息）
+     * @param topic
+     * @param isDefault
+     * @param defaultMQProducer
+     * @return
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
-            if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+            if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {  // #1
                 try {
                     TopicRouteData topicRouteData;
-                    if (isDefault && defaultMQProducer != null) {
+                    if (isDefault && defaultMQProducer != null) { // #2
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
                         if (topicRouteData != null) {
@@ -602,25 +616,25 @@ public class MQClientInstance {
                             }
                         }
                     } else {
-                        topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, 1000 * 3);
+                        topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, 1000 * 3); // #3
                     }
                     if (topicRouteData != null) {
-                        TopicRouteData old = this.topicRouteTable.get(topic);
-                        boolean changed = topicRouteDataIsChange(old, topicRouteData);
+                        TopicRouteData old = this.topicRouteTable.get(topic); // #4
+                        boolean changed = topicRouteDataIsChange(old, topicRouteData); // #5
                         if (!changed) {
-                            changed = this.isNeedUpdateTopicRouteInfo(topic);
+                            changed = this.isNeedUpdateTopicRouteInfo(topic);   // #6
                         } else {
                             log.info("the topic[{}] route info changed, old[{}] ,new[{}]", topic, old, topicRouteData);
                         }
 
-                        if (changed) {
+                        if (changed) { // #7
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
 
-                            // Update Pub info
+                            // Update Pub info #8
                             {
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);

@@ -22,19 +22,22 @@ import org.apache.rocketmq.store.ConsumeQueue;
 
 public class MessageStoreConfig {
     //The root directory in which the log data is kept
+    // 设置Broker的存储根目录
     @ImportantField
     private String storePathRootDir = System.getProperty("user.home") + File.separator + "store";
 
     //The directory in which the commitlog is kept
     @ImportantField
+    // 设置commitlog的存储目录
     private String storePathCommitLog = System.getProperty("user.home") + File.separator + "store"
         + File.separator + "commitlog";
 
     // CommitLog file size,default is 1G
     private int mapedFileSizeCommitLog = 1024 * 1024 * 1024;
-    // ConsumeQueue file size,default is 30W
+    // ConsumeQueue file size,default is 30W,
     private int mapedFileSizeConsumeQueue = 300000 * ConsumeQueue.CQ_STORE_UNIT_SIZE;
     // enable consume queue ext
+    // 就是如果消费端消息消费速度跟不上，是否创建一个扩展的 ConsumeQueue文件
     private boolean enableConsumeQueueExt = false;
     // ConsumeQueue extend file size, 48M
     private int mappedFileSizeConsumeQueueExt = 48 * 1024 * 1024;
@@ -44,6 +47,7 @@ public class MessageStoreConfig {
 
     // CommitLog flush interval
     // flush data to disk
+    // 刷盘间隔 500ms
     @ImportantField
     private int flushIntervalCommitLog = 500;
 
@@ -62,6 +66,7 @@ public class MessageStoreConfig {
     @ImportantField
     private boolean flushCommitLogTimed = false;
     // ConsumeQueue flush interval
+    // 刷写到ConsumeQueue的间隔，默认为1s
     private int flushIntervalConsumeQueue = 1000;
     // Resource reclaim interval
     private int cleanResourceInterval = 10000;
@@ -87,8 +92,10 @@ public class MessageStoreConfig {
     // This check adds some overhead,so it may be disabled in cases seeking extreme performance.
     private boolean checkCRCOnRecover = true;
     // How many pages are to be flushed when flush CommitLog
+    // 每次 flush commitlog 时最小发生变化的页数
     private int flushCommitLogLeastPages = 4;
     // How many pages are to be committed when commit data to file
+    // 每一次 commitlog 提交任务至少需要的页数
     private int commitCommitLogLeastPages = 4;
     // Flush page size when the disk in warming state
     private int flushLeastPagesWhenWarmMapedFile = 1024 / 4 * 16;

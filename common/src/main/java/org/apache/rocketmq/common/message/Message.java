@@ -26,7 +26,15 @@ public class Message implements Serializable {
     private static final long serialVersionUID = 8445773977080406428L;
 
     private String topic;
+    // Rocketmq 不做处理
     private int flag;
+    /**
+     * 扩展属性
+     * - tag ：消息 TAG ，用于消息过滤
+     * - keys: Message 索引键， 多个用空格隔开， RocketMQ 可以根据这些 key 快速检索到消息
+     * - waitStoreMsgOK ：消息发送时是否等消息存储完成后再返回
+     * - delayTimeLevel ： 消息延迟级别，用于定时消息或消息重试
+     */
     private Map<String, String> properties;
     private byte[] body;
     private String transactionId;
@@ -38,6 +46,15 @@ public class Message implements Serializable {
         this(topic, "", "", 0, body, true);
     }
 
+    /**
+     *
+     * @param topic
+     * @param tags 消息 TAG ，用于消息过滤
+     * @param keys
+     * @param flag
+     * @param body
+     * @param waitStoreMsgOK 消息发送时是否等消息存储完成后再返回
+     */
     public Message(String topic, String tags, String keys, int flag, byte[] body, boolean waitStoreMsgOK) {
         this.topic = topic;
         this.flag = flag;
@@ -136,6 +153,7 @@ public class Message implements Serializable {
         this.setKeys(sb.toString().trim());
     }
 
+    // 消息延迟级别，用于定时消息或消息重试
     public int getDelayTimeLevel() {
         String t = this.getProperty(MessageConst.PROPERTY_DELAY_TIME_LEVEL);
         if (t != null) {

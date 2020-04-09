@@ -32,9 +32,9 @@ public class RegisterBrokerRequestHeader implements CommandCustomHeader {
     @CFNotNull
     private String clusterName;
     @CFNotNull
-    private String haServerAddr;
+    private String haServerAddr; // master 地址，初次请求时该值为空， 0 requestBody: slave 向 Nameserver 注册后返回
     @CFNotNull
-    private Long brokerId;
+    private Long brokerId; // 0 master >0 slave
 
     private boolean compressed;
 
