@@ -483,9 +483,16 @@ public class ConsumeQueue {
         }
     }
 
+    /**
+     * 根据 startlndex 获取消息消费队列条目
+     * @param startIndex
+     * @return
+     */
     public SelectMappedBufferResult getIndexBuffer(final long startIndex) {
         int mappedFileSize = this.mappedFileSize;
+        // 得到物理偏移
         long offset = startIndex * CQ_STORE_UNIT_SIZE;
+        // 如果大于 minLogicOffset ， 则根据偏移量定位到具体的物理文件
         if (offset >= this.getMinLogicOffset()) {
             MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset);
             if (mappedFile != null) {
@@ -493,6 +500,7 @@ public class ConsumeQueue {
                 return result;
             }
         }
+        // 如果该 offset 小于 minLogicOffset ， 则返回 null， 说明该消息已被删除
         return null;
     }
 

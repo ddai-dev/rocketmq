@@ -549,24 +549,42 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /**
+     * 代码@2：checkConfig,检查配置信息，主要检查消费者组（consumeGroup）、
+     *      消息消费方式（messageModel）、消息消费开始偏移量（consumeFromWhere）、消息队列分配算法（AllocateMessageQueueStrategy）、
+     *      订阅消息主题（Map<topic,sub expression ）,消息回调监听器(MessageListener)、顺序消息模式时是否只有一个消息队列等等
+     * 代码@3：copySubscription 加工订阅信息，将 Map,同时，如果消息消费模式为集群模式，还需要为该消费组对应一个重试主题
+     * 代码@4：如果消息消费模式为集群模式，并且当前的实例名为 DEFAULT，替换为当前客户端进程的PID
+     * 代码@5：负载均衡相关实现
+     * 代码@6：pullAPIWrapper，消息拉取API封装类
+     * 代码@7：消费进度存储，如果是集群模式，使用远程存储 RemoteBrokerOffsetStore，如果是广播模式，则使用本地存储LocalFileOffsetStore
+     * 代码@8：加载消息消费进度
+     * 代码@9：消息消费服务并启动，
+     * 代码@10：向远程 Broker 服务器注册消费者
+     * 代码@11，更新订阅信息
+     * 代码@12：检测broker状态
+     * 代码@13：发送心跳包
+     * 代码@14：重新负载
+     * @throws MQClientException
+     */
     public synchronized void start() throws MQClientException {
         switch (this.serviceState) {
             case CREATE_JUST:
                 log.info("the consumer [{}] start beginning. messageModel={}, isUnitMode={}", this.defaultMQPushConsumer.getConsumerGroup(),
                     this.defaultMQPushConsumer.getMessageModel(), this.defaultMQPushConsumer.isUnitMode());
-                this.serviceState = ServiceState.START_FAILED;
+                this.serviceState = ServiceState.START_FAILED; // @1
 
-                this.checkConfig();
+                this.checkConfig();  //@2
 
-                this.copySubscription();
+                this.copySubscription();  //@3
 
-                if (this.defaultMQPushConsumer.getMessageModel() == MessageModel.CLUSTERING) {
+                if (this.defaultMQPushConsumer.getMessageModel() == MessageModel.CLUSTERING) { // @4
                     this.defaultMQPushConsumer.changeInstanceNameToPID();
                 }
 
                 this.mQClientFactory = MQClientManager.getInstance().getAndCreateMQClientInstance(this.defaultMQPushConsumer, this.rpcHook);
 
-                this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup());
+                this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup()); // @5
                 this.rebalanceImpl.setMessageModel(this.defaultMQPushConsumer.getMessageModel());
                 this.rebalanceImpl.setAllocateMessageQueueStrategy(this.defaultMQPushConsumer.getAllocateMessageQueueStrategy());
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
@@ -574,9 +592,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 this.pullAPIWrapper = new PullAPIWrapper(
                     mQClientFactory,
                     this.defaultMQPushConsumer.getConsumerGroup(), isUnitMode());
-                this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList);
+                this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList); //@6
 
-                if (this.defaultMQPushConsumer.getOffsetStore() != null) {
+                if (this.defaultMQPushConsumer.getOffsetStore() != null) { // @7
                     this.offsetStore = this.defaultMQPushConsumer.getOffsetStore();
                 } else {
                     switch (this.defaultMQPushConsumer.getMessageModel()) {
@@ -591,7 +609,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     }
                     this.defaultMQPushConsumer.setOffsetStore(this.offsetStore);
                 }
-                this.offsetStore.load();
+                this.offsetStore.load();   //@8
 
                 if (this.getMessageListenerInner() instanceof MessageListenerOrderly) {
                     this.consumeOrderly = true;
@@ -603,9 +621,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                         new ConsumeMessageConcurrentlyService(this, (MessageListenerConcurrently) this.getMessageListenerInner());
                 }
 
-                this.consumeMessageService.start();
+                this.consumeMessageService.start();  //@9
 
-                boolean registerOK = mQClientFactory.registerConsumer(this.defaultMQPushConsumer.getConsumerGroup(), this);
+                boolean registerOK = mQClientFactory.registerConsumer(this.defaultMQPushConsumer.getConsumerGroup(), this);  //@10
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
                     this.consumeMessageService.shutdown();
@@ -629,10 +647,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 break;
         }
 
-        this.updateTopicSubscribeInfoWhenSubscriptionChanged();
-        this.mQClientFactory.checkClientInBroker();
-        this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
-        this.mQClientFactory.rebalanceImmediately();
+        this.updateTopicSubscribeInfoWhenSubscriptionChanged(); //@11
+        this.mQClientFactory.checkClientInBroker();  //@12
+        this.mQClientFactory.sendHeartbeatToAllBrokerWithLock(); //@13
+        this.mQClientFactory.rebalanceImmediately();     //@14
     }
 
     private void checkConfig() throws MQClientException {

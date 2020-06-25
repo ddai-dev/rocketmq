@@ -313,6 +313,7 @@ public class MappedFile extends ReferenceResource {
                 try {
                     //We only append data to fileChannel or mappedByteBuffer, never both.
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
+                        // 强制写入磁盘
                         this.fileChannel.force(false);
                     } else {
                         this.mappedByteBuffer.force();
@@ -363,8 +364,7 @@ public class MappedFile extends ReferenceResource {
      * 设置 limit 为 wrotePosition （当 前 最大有效 数 据 指 针 ）
      * 然后 把 commitedPosition 到 wrotePosition 的 数 据 复 制 （写 入）到 FileChannel 中，
      * 然后更新 committedPosition 指针为 wrotePosition
-     * <p>
-     * commit 的作用就是将 Mapp巳dFile#­ writeBuffer 中 的数据提交到文件通道 FileChannel 中
+     * commit 的作用就是将 MappedFile#­ writeBuffer 中的数据提交到文件通道 FileChannel 中
      *
      * @param commitLeastPages
      */
@@ -401,18 +401,28 @@ public class MappedFile extends ReferenceResource {
         return write > flush;
     }
 
+    /**
+     * 文件写满
+     *
+     * @param commitLeastPages
+     * @return
+     */
     protected boolean isAbleToCommit(final int commitLeastPages) {
         int flush = this.committedPosition.get();
         int write = this.wrotePosition.get();
 
+        // 文件写满
         if (this.isFull()) {
             return true;
         }
 
         if (commitLeastPages > 0) {
+            // wrotePosition（ 当前 writeBuffer 的写指针）与上一次提交的指针（ committedPosition) /OS_PAGE_SIZE
+            // 脏页数满足
             return ((write / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= commitLeastPages;
         }
 
+        // commitLeastPages<0 只要有脏数据, 就需要提交
         return write > flush;
     }
 

@@ -301,6 +301,7 @@ public class MappedFileQueue {
 
     /**
      * 并不是返回 0, 而是记录中的值
+     *
      * @return
      */
     public long getMinOffset() {
@@ -440,15 +441,23 @@ public class MappedFileQueue {
         return deleteCount;
     }
 
+    /**
+     * #1：根据上次刷新的位置，得到当前的 MappedFile 对象。
+     * #2：执行 MappedFile 的 flush 方法。
+     * #3：更新上次刷新的位置。
+     *
+     * @param flushLeastPages
+     * @return
+     */
     public boolean flush(final int flushLeastPages) {
         boolean result = true;
-        MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, this.flushedWhere == 0);
+        MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, this.flushedWhere == 0); // #1
         if (mappedFile != null) {
             long tmpTimeStamp = mappedFile.getStoreTimestamp();
-            int offset = mappedFile.flush(flushLeastPages);
+            int offset = mappedFile.flush(flushLeastPages);  // #2
             long where = mappedFile.getFileFromOffset() + offset;
             result = where == this.flushedWhere;
-            this.flushedWhere = where;
+            this.flushedWhere = where; // #3
             if (0 == flushLeastPages) {
                 this.storeTimestamp = tmpTimeStamp;
             }
